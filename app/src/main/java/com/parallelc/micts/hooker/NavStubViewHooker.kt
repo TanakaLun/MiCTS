@@ -39,8 +39,8 @@ class NavStubViewHooker {
         }
 
         fun hook(param: XposedModuleInterface.PackageLoadedParam, skipHookTouch: Boolean) {
-            val classLoader = param.classLoader
-            val navStubViewClass = classLoader.loadClass("com.miui.home.recents.NavStubView")
+            val loader: ClassLoader = param.classLoader
+            val navStubViewClass: Class<*> = loader.loadClass("com.miui.home.recents.NavStubView")
             
             runCatching {
                 val startAnimMethod: Method = navStubViewClass.getDeclaredMethod("startRecentsAnimationPre")
@@ -57,11 +57,11 @@ class NavStubViewHooker {
             if (skipHookTouch) return
 
             runCatching {
-                mCurrAction = navStubViewClass.getDeclaredField("mCurrAction").apply { setAccessible(true) }
-                mCurrX = navStubViewClass.getDeclaredField("mCurrX").apply { setAccessible(true) }
-                mInitX = navStubViewClass.getDeclaredField("mInitX").apply { setAccessible(true) }
-                mCurrY = navStubViewClass.getDeclaredField("mCurrY").apply { setAccessible(true) }
-                mInitY = navStubViewClass.getDeclaredField("mInitY").apply { setAccessible(true) }
+                mCurrAction = navStubViewClass.getDeclaredField("mCurrAction").apply { isAccessible = true }
+                mCurrX = navStubViewClass.getDeclaredField("mCurrX").apply { isAccessible = true }
+                mInitX = navStubViewClass.getDeclaredField("mInitX").apply { isAccessible = true }
+                mCurrY = navStubViewClass.getDeclaredField("mCurrY").apply { isAccessible = true }
+                mInitY = navStubViewClass.getDeclaredField("mInitY").apply { isAccessible = true }
 
                 val onTouchMethod: Method = navStubViewClass.getDeclaredMethod("onTouchEvent", MotionEvent::class.java)
                 module!!.hook(onTouchMethod).intercept(object : XposedInterface.Hooker {
