@@ -12,7 +12,7 @@ import com.parallelc.micts.config.XposedConfig.DEFAULT_CONFIG
 import com.parallelc.micts.config.XposedConfig.KEY_TRIGGER_SERVICE
 import com.parallelc.micts.module
 import io.github.libxposed.api.XposedInterface
-import io.github.libxposed.api.XposedModuleInterface.SystemServerLoadedParam
+import io.github.libxposed.api.XposedModuleInterface
 import java.lang.reflect.Method
 
 class VIMSHooker {
@@ -21,7 +21,7 @@ class VIMSHooker {
         private var contextualSearchPackageName: Int = 0
 
         @SuppressLint("PrivateApi")
-        fun hook(param: SystemServerLoadedParam) {
+        fun hook(param: XposedModuleInterface.SystemServerLoadedParam) {
             val classLoader = param.classLoader
             val vimsStub = classLoader.loadClass("com.android.server.voiceinteraction.VoiceInteractionManagerService\$VoiceInteractionManagerServiceStub")
             val rString = classLoader.loadClass("com.android.internal.R\$string")
