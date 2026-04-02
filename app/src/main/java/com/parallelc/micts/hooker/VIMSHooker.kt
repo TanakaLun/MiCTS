@@ -62,17 +62,12 @@ class VIMSHooker {
                                 }
                             }
                         }.onFailure { e ->
-                            module!!.log(Log.ERROR, "MiCTS", "hook resources fail", e)
+                            module!!.log(Log.ERROR, "MiCTS", "hook resources fail", e.toString())
                         }
 
-                        if (skipOriginal) {
-                            return skipResult
-                        }
-
+                        if (skipOriginal) return skipResult
                         val result = chain.proceed()
-                        
                         tempHook?.unhook()
-                        
                         return result
                     }
                 })
