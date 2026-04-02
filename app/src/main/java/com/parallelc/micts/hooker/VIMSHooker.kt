@@ -62,7 +62,7 @@ class VIMSHooker {
                                 }
                             }
                         }.onFailure { e ->
-                            module!!.log(Log.ERROR, "MiCTS", "hook resources fail", e.toString())
+                            module!!.log(Log.ERROR, "MiCTS", "hook resources fail", e)
                         }
 
                         if (skipOriginal) return skipResult
