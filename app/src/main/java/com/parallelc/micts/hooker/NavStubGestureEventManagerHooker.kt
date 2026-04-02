@@ -8,14 +8,14 @@ import com.parallelc.micts.config.XposedConfig.KEY_VIBRATE
 import com.parallelc.micts.module
 import com.parallelc.micts.ui.activity.triggerCircleToSearch
 import io.github.libxposed.api.XposedInterface
-import io.github.libxposed.api.XposedModuleInterface.PackageLoadedParam
+import io.github.libxposed.api.XposedModuleInterface
 import java.lang.reflect.Method
 
 class NavStubGestureEventManagerHooker {
     companion object {
         private var getInstance: Method? = null
 
-        fun hook(param: PackageLoadedParam) {
+        fun hook(param: XposedModuleInterface.PackageLoadedParam) {
             val classLoader = param.classLoader
             val navStubGestureEventManager = classLoader.loadClass("com.miui.home.recents.gesture.NavStubGestureEventManager")
             getInstance = runCatching {
