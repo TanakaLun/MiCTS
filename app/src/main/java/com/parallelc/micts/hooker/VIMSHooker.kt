@@ -13,6 +13,7 @@ import com.parallelc.micts.config.XposedConfig.KEY_TRIGGER_SERVICE
 import com.parallelc.micts.module
 import io.github.libxposed.api.XposedInterface
 import io.github.libxposed.api.XposedModuleInterface.SystemServerLoadedParam
+import java.lang.reflect.Method
 
 class VIMSHooker {
     companion object {
@@ -21,56 +22,56 @@ class VIMSHooker {
 
         @SuppressLint("PrivateApi")
         fun hook(param: SystemServerLoadedParam) {
-            val vimsStub = param.classLoader.loadClass("com.android.server.voiceinteraction.VoiceInteractionManagerService\$VoiceInteractionManagerServiceStub")
-            val rString = param.classLoader.loadClass("com.android.internal.R\$string")
+            val classLoader = param.classLoader
+            val vimsStub = classLoader.loadClass("com.android.server.voiceinteraction.VoiceInteractionManagerService\$VoiceInteractionManagerServiceStub")
+            val rString = classLoader.loadClass("com.android.internal.R\$string")
             contextualSearchKey = rString.getField("config_defaultContextualSearchKey").getInt(null)
             contextualSearchPackageName = rString.getField("config_defaultContextualSearchPackageName").getInt(null)
             
-            module!!.hook(vimsStub.getDeclaredMethod("showSessionFromSession", IBinder::class.java, Bundle::class.java, Int::class.java, String::class.java))
-                .intercept(object : XposedInterface.Hooker {
-                    override fun intercept(chain: XposedInterface.Chain): Any? {
-                        var tempHook: XposedInterface.HookHandle? = null
-                        var skipOriginal = false
-                        var skipResult: Any? = null
-                        
-                        runCatching {
-                            val bundle = chain.args[1] as Bundle
-                            if (bundle.getBoolean("micts_trigger", false)) {
-                                Binder.clearCallingIdentity()
-                                val triggerService = module!!.getRemotePreferences(CONFIG_NAME).getInt(KEY_TRIGGER_SERVICE, DEFAULT_CONFIG[KEY_TRIGGER_SERVICE] as Int)
-                                
-                                if (triggerService == TriggerService.CSService.ordinal) {
-                                    skipResult = CSMSHooker.startContextualSearch(bundle.getInt("omni.entry_point"))
-                                    skipOriginal = true
-                                } else {
-                                    tempHook = module!!.hook(Resources::class.java.getDeclaredMethod("getString", Int::class.java))
-                                        .intercept(object : XposedInterface.Hooker {
-                                            override fun intercept(strChain: XposedInterface.Chain): Any? {
-                                                val arg0 = strChain.args[0] as Int
-                                                return when (arg0) {
-                                                    contextualSearchKey -> {
-                                                        val ts = module!!.getRemotePreferences(CONFIG_NAME).getInt(KEY_TRIGGER_SERVICE, DEFAULT_CONFIG[KEY_TRIGGER_SERVICE] as Int)
-                                                        if (ts != TriggerService.VIS.ordinal) "omni.entry_point" else ""
-                                                    }
-                                                    contextualSearchPackageName -> {
-                                                        "com.google.android.googlequicksearchbox"
-                                                    }
-                                                    else -> strChain.proceed()
-                                                }
+            val showSessionMethod: Method = vimsStub.getDeclaredMethod("showSessionFromSession", IBinder::class.java, Bundle::class.java, Int::class.java, String::class.java)
+            
+            module!!.hook(showSessionMethod).intercept(object : XposedInterface.Hooker {
+                override fun intercept(chain: XposedInterface.Chain): Any? {
+                    var tempHook: XposedInterface.HookHandle? = null
+                    var skipOriginal = false
+                    var skipResult: Any? = null
+                    
+                    runCatching {
+                        val bundle = chain.args[1] as Bundle
+                        if (bundle.getBoolean("micts_trigger", false)) {
+                            Binder.clearCallingIdentity()
+                            val triggerService = module!!.getRemotePreferences(CONFIG_NAME).getInt(KEY_TRIGGER_SERVICE, DEFAULT_CONFIG[KEY_TRIGGER_SERVICE] as Int)
+                            
+                            if (triggerService == TriggerService.CSService.ordinal) {
+                                skipResult = CSMSHooker.startContextualSearch(bundle.getInt("omni.entry_point"))
+                                skipOriginal = true
+                            } else {
+                                val getStringMethod: Method = Resources::class.java.getDeclaredMethod("getString", Int::class.java)
+                                tempHook = module!!.hook(getStringMethod).intercept(object : XposedInterface.Hooker {
+                                    override fun intercept(strChain: XposedInterface.Chain): Any? {
+                                        val resId = strChain.args[0] as Int
+                                        return when (resId) {
+                                            contextualSearchKey -> {
+                                                val ts = module!!.getRemotePreferences(CONFIG_NAME).getInt(KEY_TRIGGER_SERVICE, DEFAULT_CONFIG[KEY_TRIGGER_SERVICE] as Int)
+                                                if (ts != TriggerService.VIS.ordinal) "omni.entry_point" else ""
                                             }
-                                        })
-                                }
+                                            contextualSearchPackageName -> "com.google.android.googlequicksearchbox"
+                                            else -> strChain.proceed()
+                                        }
+                                    }
+                                })
                             }
-                        }.onFailure { e ->
-                            module!!.log(Log.ERROR, "MiCTS", "hook resources fail", e)
                         }
-
-                        if (skipOriginal) return skipResult
-                        val result = chain.proceed()
-                        tempHook?.unhook()
-                        return result
+                    }.onFailure { e ->
+                        module!!.log(Log.ERROR, "MiCTS", "hook resources fail", e)
                     }
-                })
+
+                    if (skipOriginal) return skipResult
+                    val result = chain.proceed()
+                    tempHook?.unhook()
+                    return result
+                }
+            })
         }
     }
 }
