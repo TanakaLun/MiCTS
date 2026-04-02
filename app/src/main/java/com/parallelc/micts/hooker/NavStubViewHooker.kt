@@ -15,6 +15,7 @@ import io.github.libxposed.api.XposedInterface
 import io.github.libxposed.api.XposedModuleInterface.PackageLoadedParam
 import java.lang.ref.WeakReference
 import java.lang.reflect.Field
+import java.lang.reflect.Method
 import kotlin.math.abs
 
 class NavStubViewHooker {
@@ -38,30 +39,32 @@ class NavStubViewHooker {
         }
 
         fun hook(param: PackageLoadedParam, skipHookTouch: Boolean) {
-            val navStubView = param.classLoader.loadClass("com.miui.home.recents.NavStubView")
-            runCatching {
-                module!!.hook(navStubView.getDeclaredMethod("startRecentsAnimationPre"))
-                    .intercept(object : XposedInterface.Hooker {
-                        override fun intercept(chain: XposedInterface.Chain): Any? {
-                            if (module!!.getRemotePreferences(CONFIG_NAME).getBoolean(KEY_GESTURE_TRIGGER, DEFAULT_CONFIG[KEY_GESTURE_TRIGGER] as Boolean)) {
-                                return null
-                            }
-                            return chain.proceed()
-                        }
-                    })
-            }
-            if (skipHookTouch) return
-            runCatching { navStubView.getDeclaredField("mCheckLongPress") }
-                .onSuccess { throw Exception("mCheckLongPress exists") }
+            val classLoader = param.classLoader
+            val navStubViewClass = classLoader.loadClass("com.miui.home.recents.NavStubView")
             
-            mCurrAction = navStubView.getDeclaredField("mCurrAction").apply { try { isAccessible = true } catch(e: Exception) {} }
-            mCurrX = navStubView.getDeclaredField("mCurrX").apply { try { isAccessible = true } catch(e: Exception) {} }
-            mInitX = navStubView.getDeclaredField("mInitX").apply { try { isAccessible = true } catch(e: Exception) {} }
-            mCurrY = navStubView.getDeclaredField("mCurrY").apply { try { isAccessible = true } catch(e: Exception) {} }
-            mInitY = navStubView.getDeclaredField("mInitY").apply { try { isAccessible = true } catch(e: Exception) {} }
+            runCatching {
+                val startAnimMethod: Method = navStubViewClass.getDeclaredMethod("startRecentsAnimationPre")
+                module!!.hook(startAnimMethod).intercept(object : XposedInterface.Hooker {
+                    override fun intercept(chain: XposedInterface.Chain): Any? {
+                        if (module!!.getRemotePreferences(CONFIG_NAME).getBoolean(KEY_GESTURE_TRIGGER, DEFAULT_CONFIG[KEY_GESTURE_TRIGGER] as Boolean)) {
+                            return null
+                        }
+                        return chain.proceed()
+                    }
+                })
+            }
 
-            module!!.hook(navStubView.getDeclaredMethod("onTouchEvent", MotionEvent::class.java))
-                .intercept(object : XposedInterface.Hooker {
+            if (skipHookTouch) return
+
+            runCatching {
+                mCurrAction = navStubViewClass.getDeclaredField("mCurrAction").apply { isAccessible = true }
+                mCurrX = navStubViewClass.getDeclaredField("mCurrX").apply { isAccessible = true }
+                mInitX = navStubViewClass.getDeclaredField("mInitX").apply { isAccessible = true }
+                mCurrY = navStubViewClass.getDeclaredField("mCurrY").apply { isAccessible = true }
+                mInitY = navStubViewClass.getDeclaredField("mInitY").apply { isAccessible = true }
+
+                val onTouchMethod: Method = navStubViewClass.getDeclaredMethod("onTouchEvent", MotionEvent::class.java)
+                module!!.hook(onTouchMethod).intercept(object : XposedInterface.Hooker {
                     override fun intercept(chain: XposedInterface.Chain): Any? {
                         val result = chain.proceed()
                         runCatching {
@@ -82,14 +85,15 @@ class NavStubViewHooker {
                     }
                 })
 
-            module!!.hook(navStubView.getDeclaredConstructor(Context::class.java))
-                .intercept(object : XposedInterface.Hooker {
+                val constructor = navStubViewClass.getDeclaredConstructor(Context::class.java)
+                module!!.hook(constructor).intercept(object : XposedInterface.Hooker {
                     override fun intercept(chain: XposedInterface.Chain): Any? {
                         val result = chain.proceed()
                         mContext = WeakReference(chain.args[0] as Context)
                         return result
                     }
                 })
+            }
         }
     }
 }
