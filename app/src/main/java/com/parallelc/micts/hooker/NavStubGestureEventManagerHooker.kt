@@ -16,13 +16,14 @@ class NavStubGestureEventManagerHooker {
         private var getInstance: Method? = null
 
         fun hook(param: XposedModuleInterface.PackageLoadedParam) {
-            val classLoader = param.classLoader
-            val navStubGestureEventManager = classLoader.loadClass("com.miui.home.recents.gesture.NavStubGestureEventManager")
+            val loader: ClassLoader = param.classLoader
+            val navStubGestureEventManagerClass: Class<*> = loader.loadClass("com.miui.home.recents.gesture.NavStubGestureEventManager")
+            
             getInstance = runCatching {
-                classLoader.loadClass("com.miui.home.launcher.Application").getDeclaredMethod("getInstance")
+                loader.loadClass("com.miui.home.launcher.Application").getDeclaredMethod("getInstance")
             }.getOrNull()
             
-            val handleLongPressMethod: Method = navStubGestureEventManager.getDeclaredMethod("handleLongPressEvent")
+            val handleLongPressMethod: Method = navStubGestureEventManagerClass.getDeclaredMethod("handleLongPressEvent")
             module!!.hook(handleLongPressMethod).intercept(object : XposedInterface.Hooker {
                 override fun intercept(chain: XposedInterface.Chain): Any? {
                     val prefs = module!!.getRemotePreferences(CONFIG_NAME)
