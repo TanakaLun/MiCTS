@@ -12,7 +12,7 @@ import com.parallelc.micts.config.XposedConfig.KEY_VIBRATE
 import com.parallelc.micts.module
 import com.parallelc.micts.ui.activity.triggerCircleToSearch
 import io.github.libxposed.api.XposedInterface
-import io.github.libxposed.api.XposedModuleInterface.PackageLoadedParam
+import io.github.libxposed.api.XposedModuleInterface
 import java.lang.ref.WeakReference
 import java.lang.reflect.Field
 import java.lang.reflect.Method
@@ -38,7 +38,7 @@ class NavStubViewHooker {
             }
         }
 
-        fun hook(param: PackageLoadedParam, skipHookTouch: Boolean) {
+        fun hook(param: XposedModuleInterface.PackageLoadedParam, skipHookTouch: Boolean) {
             val classLoader = param.classLoader
             val navStubViewClass = classLoader.loadClass("com.miui.home.recents.NavStubView")
             
@@ -57,11 +57,11 @@ class NavStubViewHooker {
             if (skipHookTouch) return
 
             runCatching {
-                mCurrAction = navStubViewClass.getDeclaredField("mCurrAction").apply { isAccessible = true }
-                mCurrX = navStubViewClass.getDeclaredField("mCurrX").apply { isAccessible = true }
-                mInitX = navStubViewClass.getDeclaredField("mInitX").apply { isAccessible = true }
-                mCurrY = navStubViewClass.getDeclaredField("mCurrY").apply { isAccessible = true }
-                mInitY = navStubViewClass.getDeclaredField("mInitY").apply { isAccessible = true }
+                mCurrAction = navStubViewClass.getDeclaredField("mCurrAction").apply { setAccessible(true) }
+                mCurrX = navStubViewClass.getDeclaredField("mCurrX").apply { setAccessible(true) }
+                mInitX = navStubViewClass.getDeclaredField("mInitX").apply { setAccessible(true) }
+                mCurrY = navStubViewClass.getDeclaredField("mCurrY").apply { setAccessible(true) }
+                mInitY = navStubViewClass.getDeclaredField("mInitY").apply { setAccessible(true) }
 
                 val onTouchMethod: Method = navStubViewClass.getDeclaredMethod("onTouchEvent", MotionEvent::class.java)
                 module!!.hook(onTouchMethod).intercept(object : XposedInterface.Hooker {
