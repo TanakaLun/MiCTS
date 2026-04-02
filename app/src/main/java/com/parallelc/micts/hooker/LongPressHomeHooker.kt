@@ -8,12 +8,10 @@ import com.parallelc.micts.config.XposedConfig.KEY_HOME_TRIGGER
 import com.parallelc.micts.config.XposedConfig.KEY_VIBRATE
 import com.parallelc.micts.module
 import com.parallelc.micts.ui.activity.triggerCircleToSearch
-import io.github.libxposed.api.XposedInterface.BeforeHookCallback
-import io.github.libxposed.api.XposedInterface.Hooker
+import io.github.libxposed.api.XposedInterface
 import io.github.libxposed.api.XposedModuleInterface.SystemServerLoadedParam
-import io.github.libxposed.api.annotations.BeforeInvocation
-import io.github.libxposed.api.annotations.XposedHooker
 import java.lang.reflect.Field
+import java.lang.reflect.Method
 
 class LongPressHomeHooker {
     companion object {
@@ -22,57 +20,43 @@ class LongPressHomeHooker {
 
         @SuppressLint("PrivateApi")
         fun hook(param: SystemServerLoadedParam) {
-            val miuiSingleKeyRule = param.classLoader.loadClass("com.android.server.policy.MiuiSingleKeyRule")
-            mContext = miuiSingleKeyRule.getDeclaredField("mContext")
-            mContext.isAccessible = true
-            mKeyCode = miuiSingleKeyRule.getDeclaredField("mKeyCode")
-            mKeyCode.isAccessible = true
-            module!!.hook(
-                miuiSingleKeyRule.getDeclaredMethod("onLongPress", Long::class.java),
-                OnLongPressHooker::class.java
-            )
-            module!!.hook(
-                miuiSingleKeyRule.getDeclaredMethod("supportLongPress"),
-                SupportLongPressHooker::class.java
-            )
-        }
+            val classLoader = param.classLoader
+            val miuiSingleKeyRule = classLoader.loadClass("com.android.server.policy.MiuiSingleKeyRule")
+            
+            mContext = miuiSingleKeyRule.getDeclaredField("mContext").apply { isAccessible = true }
+            mKeyCode = miuiSingleKeyRule.getDeclaredField("mKeyCode").apply { isAccessible = true }
 
-        @XposedHooker
-        class OnLongPressHooker : Hooker {
-            companion object {
-                @JvmStatic
-                @BeforeInvocation
-                fun before(callback: BeforeHookCallback) {
-                    if (mKeyCode.getInt(callback.thisObject) == 3) {
+            val onLongPressMethod: Method = miuiSingleKeyRule.getDeclaredMethod("onLongPress", Long::class.java)
+            module!!.hook(onLongPressMethod).intercept(object : XposedInterface.Hooker {
+                override fun intercept(chain: XposedInterface.Chain): Any? {
+                    if (mKeyCode.getInt(chain.thisObject) == 3) {
                         val prefs = module!!.getRemotePreferences(CONFIG_NAME)
                         if (prefs.getBoolean(KEY_HOME_TRIGGER, DEFAULT_CONFIG[KEY_HOME_TRIGGER] as Boolean)) {
-                            val context = runCatching { mContext.get(callback.thisObject) as? Context }.getOrNull()
+                            val context = runCatching { mContext.get(chain.thisObject) as? Context }.getOrNull()
                             triggerCircleToSearch(
                                 1,
                                 context,
                                 prefs.getBoolean(KEY_VIBRATE, DEFAULT_CONFIG[KEY_VIBRATE] as Boolean)
                             )
-                            callback.returnAndSkip(null)
+                            return null
                         }
                     }
+                    return chain.proceed()
                 }
-            }
-        }
-    }
+            })
 
-    @XposedHooker
-    class SupportLongPressHooker : Hooker {
-        companion object {
-            @JvmStatic
-            @BeforeInvocation
-            fun before(callback: BeforeHookCallback) {
-                if (mKeyCode.getInt(callback.thisObject) == 3) {
-                    val prefs = module!!.getRemotePreferences(CONFIG_NAME)
-                    if (prefs.getBoolean(KEY_HOME_TRIGGER, DEFAULT_CONFIG[KEY_HOME_TRIGGER] as Boolean)) {
-                        callback.returnAndSkip(true)
+            val supportLongPressMethod: Method = miuiSingleKeyRule.getDeclaredMethod("supportLongPress")
+            module!!.hook(supportLongPressMethod).intercept(object : XposedInterface.Hooker {
+                override fun intercept(chain: XposedInterface.Chain): Any? {
+                    if (mKeyCode.getInt(chain.thisObject) == 3) {
+                        val prefs = module!!.getRemotePreferences(CONFIG_NAME)
+                        if (prefs.getBoolean(KEY_HOME_TRIGGER, DEFAULT_CONFIG[KEY_HOME_TRIGGER] as Boolean)) {
+                            return true
+                        }
                     }
+                    return chain.proceed()
                 }
-            }
+            })
         }
     }
 }
