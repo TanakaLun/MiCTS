@@ -28,11 +28,11 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.lsposed.hiddenapibypass.HiddenApiBypass
 
-const val LOG_TAG = BuildConfig.APP_NAME
+const val LOG_TAG = "MiCTS"
 
 @SuppressLint("PrivateApi")
 fun triggerCircleToSearch(entryPoint: Int, context: Context?, vibrate: Boolean): Boolean {
-    val result =  runCatching {
+    val result = runCatching {
         val bundle = Bundle()
         if (BuildConfig.APP_NAME == "MiCTS") {
             bundle.putLong("invocation_time_ms", SystemClock.elapsedRealtime())
@@ -48,9 +48,10 @@ fun triggerCircleToSearch(entryPoint: Int, context: Context?, vibrate: Boolean):
             HiddenApiBypass.invoke(iVimsClass, vims, "showSessionFromSession", null, bundle, 7) as Boolean
         }
     }.onFailure { e ->
-        val errMsg = "triggerCircleToSearch invoke omni failed: " + e.stackTraceToString()
-        module?.log(errMsg) ?: Log.e(LOG_TAG, errMsg)
+        val errMsg = "triggerCircleToSearch invoke omni failed: ${e.message}"
+        module?.log(Log.ERROR, LOG_TAG, errMsg, e) ?: Log.e(LOG_TAG, errMsg, e)
     }.getOrDefault(false)
+
     if (result && vibrate && context != null) {
         runCatching {
             (context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator).run {
@@ -65,18 +66,16 @@ fun triggerCircleToSearch(entryPoint: Int, context: Context?, vibrate: Boolean):
                 }
             }
         }.onFailure { e ->
-            val errMsg = "triggerCircleToSearch vibrate failed: " + e.stackTraceToString()
-            module?.log(errMsg) ?: Log.e(LOG_TAG, errMsg)
+            val errMsg = "triggerCircleToSearch vibrate failed: ${e.message}"
+            module?.log(Log.ERROR, LOG_TAG, errMsg, e) ?: Log.e(LOG_TAG, errMsg, e)
         }
     }
     return result
 }
 
 class MainActivity : ComponentActivity() {
-    suspend fun delayAndTrigger(delayMs: Long, vibrate: Boolean) {
-        if (delayMs > 0) {
-            delay(delayMs)
-        }
+    private suspend fun delayAndTrigger(delayMs: Long, vibrate: Boolean) {
+        if (delayMs > 0) delay(delayMs)
         if (!triggerCircleToSearch(1, this, vibrate)) {
             Toast.makeText(this, getString(R.string.trigger_failed), Toast.LENGTH_SHORT).show()
         }
