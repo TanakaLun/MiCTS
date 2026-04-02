@@ -22,9 +22,10 @@ class VIMSHooker {
 
         @SuppressLint("PrivateApi")
         fun hook(param: XposedModuleInterface.SystemServerLoadedParam) {
-            val classLoader = param.classLoader
-            val vimsStub = classLoader.loadClass("com.android.server.voiceinteraction.VoiceInteractionManagerService\$VoiceInteractionManagerServiceStub")
-            val rString = classLoader.loadClass("com.android.internal.R\$string")
+            val loader: ClassLoader = param.classLoader
+            val vimsStub: Class<*> = loader.loadClass("com.android.server.voiceinteraction.VoiceInteractionManagerService\$VoiceInteractionManagerServiceStub")
+            val rString: Class<*> = loader.loadClass("com.android.internal.R\$string")
+            
             contextualSearchKey = rString.getField("config_defaultContextualSearchKey").getInt(null)
             contextualSearchPackageName = rString.getField("config_defaultContextualSearchPackageName").getInt(null)
             
