@@ -19,10 +19,11 @@ class NavBarEventHelperHooker {
         private lateinit var mContext: Field
 
         fun hook(param: XposedModuleInterface.PackageLoadedParam) {
-            val navBarEventHelper = param.classLoader.loadClass("com.miui.home.recents.cts.NavBarEventHelper")
-            mContext = navBarEventHelper.getDeclaredField("mContext").apply { setAccessible(true) }
+            val loader: ClassLoader = param.classLoader
+            val navBarEventHelperClass: Class<*> = loader.loadClass("com.miui.home.recents.cts.NavBarEventHelper")
+            mContext = navBarEventHelperClass.getDeclaredField("mContext").apply { isAccessible = true }
             
-            val onLongPressMethod: Method = navBarEventHelper.getDeclaredMethod("onLongPress", MotionEvent::class.java)
+            val onLongPressMethod: Method = navBarEventHelperClass.getDeclaredMethod("onLongPress", MotionEvent::class.java)
             module!!.hook(onLongPressMethod).intercept(object : XposedInterface.Hooker {
                 override fun intercept(chain: XposedInterface.Chain): Any? {
                     val prefs = module!!.getRemotePreferences(CONFIG_NAME)
