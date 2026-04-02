@@ -54,11 +54,11 @@ class NavStubViewHooker {
             runCatching { navStubView.getDeclaredField("mCheckLongPress") }
                 .onSuccess { throw Exception("mCheckLongPress exists") }
             
-            mCurrAction = navStubView.getDeclaredField("mCurrAction").apply { isAccessible = true }
-            mCurrX = navStubView.getDeclaredField("mCurrX").apply { isAccessible = true }
-            mInitX = navStubView.getDeclaredField("mInitX").apply { isAccessible = true }
-            mCurrY = navStubView.getDeclaredField("mCurrY").apply { isAccessible = true }
-            mInitY = navStubView.getDeclaredField("mInitY").apply { isAccessible = true }
+            mCurrAction = navStubView.getDeclaredField("mCurrAction").apply { try { isAccessible = true } catch(e: Exception) {} }
+            mCurrX = navStubView.getDeclaredField("mCurrX").apply { try { isAccessible = true } catch(e: Exception) {} }
+            mInitX = navStubView.getDeclaredField("mInitX").apply { try { isAccessible = true } catch(e: Exception) {} }
+            mCurrY = navStubView.getDeclaredField("mCurrY").apply { try { isAccessible = true } catch(e: Exception) {} }
+            mInitY = navStubView.getDeclaredField("mInitY").apply { try { isAccessible = true } catch(e: Exception) {} }
 
             module!!.hook(navStubView.getDeclaredMethod("onTouchEvent", MotionEvent::class.java))
                 .intercept(object : XposedInterface.Hooker {
@@ -76,7 +76,7 @@ class NavStubViewHooker {
                                 else -> view.removeCallbacks(mCheckLongPress)
                             }
                         }.onFailure { e ->
-                            module!!.log(Log.ERROR, "MiCTS", "NavStubViewHooker onTouchEvent fail", e.toString())
+                            module!!.log(Log.ERROR, "MiCTS", "NavStubViewHooker onTouchEvent fail", e)
                         }
                         return result
                     }
